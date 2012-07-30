@@ -1,181 +1,123 @@
 package com.nootek.cmsg.compression.archiver.gzip;
 
+import com.nootek.cmsg.compression.Utils;
 import com.nootek.cmsg.compression.archiver.Archiver;
+import com.nootek.cmsg.compression.archiver.ArchiverException;
 import com.nootek.cmsg.compression.encoding.EncodingData;
 import com.nootek.cmsg.compression.encoding.EncodingsEnum;
-import com.nootek.cmsg.std.error.ReferenceChecker;
+import org.jetbrains.annotations.NotNull;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-public class GZIPArchiver extends Archiver
-{
+public class GZIPArchiver implements Archiver {
     private int archiveType;
+    private static final String TAG = GZIPArchiver.class.getName();
+    private static final byte[] GZIP_HEADER = new byte[]{
+            0x1f, //GZIP_MAGIC,
+            (byte) 0x8b, //(GZIP_MAGIC >> 8),
+            8, //DEFLATE_CM,
+            0, //FLG,
+            0, //MTIME,
+            0, //MTIME,
+            0, //MTIME,
+            0, //MTIME,
+            0, //XFLG,
+            0, //OS
+    };
 
-    public GZIPArchiver()
-    {
 
-    }
-
-    public GZIPArchiver(int archiveType)
-    {
+    public GZIPArchiver(int archiveType) {
         this.archiveType = archiveType;
     }
 
     @Override
-    public byte[] compress(final EncodingData encodingData)  throws GzipArchiverException
-    {
-        ReferenceChecker.checkReferenceNotNull(encodingData);
-        final String stringToCompress = encodingData.getString();
-        final byte[] stringBytesToCompress = stringToCompress.getBytes();
-        final int encodingNumber = encodingData.getStringEncoding().getEncodingNumber();
+    public byte[] compress(@NotNull EncodingData encodingData) throws ArchiverException {
+        String stringToCompress = encodingData.getString();
+        byte[] stringBytesToCompress = stringToCompress.getBytes();
+        int encodingNumber = encodingData.getStringEncoding().getEncodingNumber();
 
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         GZIPOutputStream gzipOutputStream = null;
-        try
-        {
+        try {
             gzipOutputStream = new GZIPOutputStream(byteArrayOutputStream);
             gzipOutputStream.write(stringBytesToCompress);
             gzipOutputStream.flush();
-        } catch (IOException e)
-        {
-            throw new GzipArchiverException("IO error while compressing raw data",e);
+        } catch (IOException e) {
+            throw new ArchiverException("IO error while compressing raw data", e);
 
-        } finally
-        {
-            if (gzipOutputStream != null)
-            {
-                try
-                {
-                    gzipOutputStream.close();
-                } catch (IOException e)
-                {
-                    System.err.println("IO error while closing compression stream:" + e.getMessage());
-                    e.printStackTrace();
-                }
-            }
+        } finally {
+            Utils.closeSilently(gzipOutputStream);
         }
+
         byte[] compressedData = byteArrayOutputStream.toByteArray();
         byte[] compressedDataWithoutHeader = removeGZIPHeaderFromCompressedData(compressedData);
         byteArrayOutputStream.reset();
-        try
-        {
+        try {
             byteArrayOutputStream.write((archiveType << 4) | encodingNumber);
             byteArrayOutputStream.write(compressedDataWithoutHeader);
-        }catch (IOException e)
-        {
-            throw new GzipArchiverException("Error while compressing header and input",e);
+        } catch (IOException e) {
+            throw new ArchiverException("Error while compressing header and input", e);
         }
 
         return byteArrayOutputStream.toByteArray();
     }
 
     @Override
-    public String decompress(final byte[] compressedData) throws GzipArchiverException
-    {
-        ReferenceChecker.checkReferenceNotNull(compressedData);
-        if(compressedData.length == 0)
-        {
+    public String decompress(@NotNull byte[] compressedData) throws ArchiverException {
+        if (compressedData.length == 0) {
             throw new IllegalArgumentException("CompressedData array is empty");
         }
-        final byte archiveTypeAndEncodingNumber = compressedData[0];
-        final int encodingType = archiveTypeAndEncodingNumber & 0x0f;
-        final String encodingName = EncodingsEnum.getEncodingNameByNumber(encodingType);
+        byte archiveTypeAndEncodingNumber = compressedData[0];
+        int encodingType = archiveTypeAndEncodingNumber & 0x0f;
+        String encodingName = EncodingsEnum.getEncodingNameByNumber(encodingType);
 
-        final byte[] rawCompressedData = new byte[compressedData.length -1];
-        System.arraycopy(compressedData,1,rawCompressedData,0,rawCompressedData.length);
+        byte[] rawCompressedData = new byte[compressedData.length - 1];
+        System.arraycopy(compressedData, 1, rawCompressedData, 0, rawCompressedData.length);
 
-        final byte[] rawCompressedDataWithHeader = insertGZIPHeaderToCompressedData(rawCompressedData);
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        byte[] rawCompressedDataWithHeader = insertGZIPHeaderToCompressedData(rawCompressedData);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         GZIPInputStream gzipInputStream = null;
 
-        try
-        {
+        try {
             gzipInputStream = new GZIPInputStream(new ByteArrayInputStream(rawCompressedDataWithHeader));
-            final int size = 8192;
-            byte[] decompressedData = new byte[size];
-            int read = 0;
-            while((read = gzipInputStream.read(decompressedData,0,size)) >= 0)
-            {
+            byte[] decompressedData = new byte[1024];
+            int read;
+            while ((read = gzipInputStream.read(decompressedData)) >= 0) {
                 byteArrayOutputStream.write(decompressedData, 0, read);
             }
-            final byte[] stringBytes = byteArrayOutputStream.toByteArray();
-            final String string = new String(stringBytes, encodingName);
-            return string;
-        }catch (UnsupportedEncodingException e1)
-        {
-            throw new GzipArchiverException("Can't decompress string,unsupported encoding",e1);
-        }catch (IOException e1)
-        {
-            throw new GzipArchiverException("IO error while decompressing",e1);
-        }
-        finally {
-              if(gzipInputStream != null)
-              {
-                  try
-                  {
-                      gzipInputStream.close();
-                  }catch (IOException e)
-                  {
-                      System.err.println("IO error while closing decompression stream:" + e.getMessage());
-                  }
-              }
-
+            byte[] stringBytes = byteArrayOutputStream.toByteArray();
+            return new String(stringBytes, encodingName);
+        } catch (UnsupportedEncodingException e1) {
+            throw new ArchiverException("Can't decompress string,unsupported encoding", e1);
+        } catch (IOException e1) {
+            throw new ArchiverException("IO error while decompressing", e1);
+        } finally {
+            Utils.closeSilently(gzipInputStream);
         }
 
     }
 
-    private static byte[] removeGZIPHeaderFromCompressedData(byte[] compressedData)
-    {
+    private static byte[] removeGZIPHeaderFromCompressedData(byte[] compressedData) {
         int compressedDataLengthWithoutHeader = compressedData.length - 10;
         byte[] compressedDataWithoutHeader = new byte[compressedDataLengthWithoutHeader];
-        System.arraycopy(compressedData,10,compressedDataWithoutHeader,0,compressedDataLengthWithoutHeader);
+        System.arraycopy(compressedData, 10, compressedDataWithoutHeader, 0, compressedDataLengthWithoutHeader);
         return compressedDataWithoutHeader;
     }
 
-    private static byte[] insertGZIPHeaderToCompressedData(byte[] compressedData)
-    {
-        ReferenceChecker.checkReferenceNotNull(compressedData);
-
-        byte[] header = createGZIPHeader();
-        byte[] compressedDataWithHeader = new byte[compressedData.length + header.length];
-        for(int i = 0;i < header.length;i++)
-        {
-            compressedDataWithHeader[i] = header[i];
-        }
-
-        System.arraycopy(compressedData,0,compressedDataWithHeader,header.length,compressedData.length);
+    private static byte[] insertGZIPHeaderToCompressedData(@NotNull byte[] compressedData) {
+        byte[] compressedDataWithHeader = new byte[compressedData.length + GZIP_HEADER.length];
+        System.arraycopy(GZIP_HEADER, 0, compressedDataWithHeader, 0, GZIP_HEADER.length);
+        System.arraycopy(compressedData, 0, compressedDataWithHeader, GZIP_HEADER.length, compressedData.length);
         return compressedDataWithHeader;
     }
 
-    private static byte[] createGZIPHeader()
-    {
-        final int GZIP_MAGIC = 0x8b1f;
-        final int DEFLATE_CM = 8;
-        final int FLG = 0;
-        final int MTIME = 0;
-        final int XFLG = 0;
-        final int OS = 0;
 
-        final byte[] header = new byte[] {
-                (byte)GZIP_MAGIC,
-                (byte)(GZIP_MAGIC >> 8),
-                (byte)DEFLATE_CM,
-                FLG,
-                MTIME,
-                MTIME,
-                MTIME,
-                MTIME,
-                XFLG,
-                OS
-        };
-
-        return header;
-    }
-
-    public int getArchiveType()
-    {
+    public int getArchiveType() {
         return archiveType;
     }
 }

@@ -1,14 +1,24 @@
 package com.nootek.cmsg.compression.archiver;
 
-import com.nootek.cmsg.compression.archiver.femtozip.FemtozipArchiverException;
-import com.nootek.cmsg.compression.archiver.gzip.GzipArchiverException;
-import com.nootek.cmsg.compression.archiver.notcompressing.NotCompressingArchiverException;
 import com.nootek.cmsg.compression.encoding.EncodingData;
 
-import java.io.IOException;
+public interface Archiver {
+    /**
+     * @param encodingData
+     * @return
+     * @throws ArchiverException
+     */
+    byte[] compress(EncodingData encodingData) throws ArchiverException;
 
-public abstract class Archiver
-{
-    public abstract byte[] compress(final EncodingData encodingData) throws FemtozipArchiverException, GzipArchiverException, NotCompressingArchiverException;
-    public abstract String decompress(final byte[] compressedData) throws NotCompressingArchiverException, FemtozipArchiverException, GzipArchiverException;
+    /**
+     * @param compressedData
+     * @return
+     * @throws ArchiverException
+     */
+    String decompress(byte[] compressedData) throws ArchiverException;
+
+    /**
+     * @return
+     */
+    int getArchiveType();
 }

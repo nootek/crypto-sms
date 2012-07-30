@@ -1,127 +1,100 @@
 package com.nootek.cmsg.compression.archiver.femtozip;
 
+import com.nootek.cmsg.compression.CompressionProtocol;
 import com.nootek.cmsg.compression.archiver.Archiver;
+import com.nootek.cmsg.compression.archiver.ArchiverException;
 import com.nootek.cmsg.compression.encoding.EncodingData;
 import com.nootek.cmsg.compression.encoding.EncodingsEnum;
-import com.nootek.cmsg.std.error.ReferenceChecker;
-import com.sun.xml.internal.ws.message.ByteArrayAttachment;
+import org.jetbrains.annotations.NotNull;
 import org.toubassi.femtozip.CompressionModel;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
-public class FemtozipArchiver extends Archiver
-{
-    private Map<EncodingsEnum,Map<Byte,CompressionModel>> dictionaries;
-    private int archiveType;
+public class FemtozipArchiver implements Archiver {
+    private Map<EncodingsEnum, Map<Byte, CompressionModel>> dictionaries;
+    private final int archiveType;
 
-    public FemtozipArchiver()
-    {
 
-    }
-
-    public FemtozipArchiver(int archiveType)
-    {
+    public FemtozipArchiver(int archiveType) {
         dictionaries = Dictionaries.getEncodingsToDictionariesMap();
         this.archiveType = archiveType;
     }
 
     @Override
-    public byte[] compress(final EncodingData encodingData) throws FemtozipArchiverException
-    {
-        final String stringToCompress = encodingData.getString();
-        final byte[] stringBytesToCompress = stringToCompress.getBytes();
-        final int encodingNumber = encodingData.getStringEncoding().getEncodingNumber();
-        final EncodingsEnum encoding = EncodingsEnum.getEncodingByNumber(encodingNumber);
-        final List<byte[]> archiveDataList = new ArrayList<byte[]>();
-        final Map<Byte,CompressionModel> numberToCompressionModel = dictionaries.get(encoding);
-        if(numberToCompressionModel != null)
-        {
-            for(Map.Entry<Byte,CompressionModel> numberToCompressionModelEntry : numberToCompressionModel.entrySet())
-            {
-                final CompressionModel compressionModel = numberToCompressionModelEntry.getValue();
-                final byte[] rawCompressedData = compressionModel.compress(stringBytesToCompress);
+    public byte[] compress(EncodingData encodingData) throws ArchiverException {
+        String stringToCompress = encodingData.getString();
+        byte[] stringBytesToCompress;
+        try {
+            stringBytesToCompress = stringToCompress.getBytes("UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new ArchiverException("", e);
+        }
+        int encodingNumber = encodingData.getStringEncoding().getEncodingNumber();
+        EncodingsEnum encoding = EncodingsEnum.getEncodingByNumber(encodingNumber);
+        List<byte[]> archiveDataList = new ArrayList<byte[]>();
+        Map<Byte, CompressionModel> numberToCompressionModel = dictionaries.get(encoding);
+        if (numberToCompressionModel != null) {
+            for (Map.Entry<Byte, CompressionModel> numberToCompressionModelEntry : numberToCompressionModel.entrySet()) {
+                CompressionModel compressionModel = numberToCompressionModelEntry.getValue();
+                byte[] rawCompressedData = compressionModel.compress(stringBytesToCompress);
 
-                final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-                final DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                DataOutputStream dataOutputStream = new DataOutputStream(byteArrayOutputStream);
 
-                try
-                {
+                try {
                     dataOutputStream.write((archiveType << 4) | encodingNumber);
                     dataOutputStream.write(numberToCompressionModelEntry.getKey().byteValue());
                     dataOutputStream.write(rawCompressedData);
-                }catch (IOException e)
-                {
-                    throw new FemtozipArchiverException("IO error while compressing data",e);
+                } catch (IOException e) {
+                    throw new ArchiverException("IO error while compressing data", e);
                 }
-                final byte[] compressedData = byteArrayOutputStream.toByteArray();
+                byte[] compressedData = byteArrayOutputStream.toByteArray();
                 archiveDataList.add(compressedData);
             }
-            final byte[] minimumArchiveData = Collections.min(archiveDataList,new Comparator<byte[]>()
-            {
-                @Override
-                public int compare(byte[] o1, byte[] o2)
-                {
-                   return o1.length - o2.length;
-                }
-            });
-
-            return minimumArchiveData;
-        }
-        else
-        {
-            throw new FemtozipArchiverException("No dictionaries found for that encoding:" + encoding.getEncodingName());
+            return Collections.min(archiveDataList, CompressionProtocol.CMP);
+        } else {
+            throw new ArchiverException("No dictionaries found for that encoding:" + encoding.getEncodingName());
         }
     }
 
     @Override
-    public String decompress(final byte[] compressedData) throws FemtozipArchiverException
-    {
-        ReferenceChecker.checkReferenceNotNull(compressedData);
-        if(compressedData.length == 0)
-        {
+    public String decompress(@NotNull byte[] compressedData) throws ArchiverException {
+        if (compressedData.length < 0) {
             throw new IllegalArgumentException("CompressedData array is empty");
         }
-        final byte archiveTypeAndEncodingNumber = compressedData[0];
-        final int encodingNumber = archiveTypeAndEncodingNumber & 0x0f;
-        final EncodingsEnum encoding = EncodingsEnum.getEncodingByNumber(encodingNumber);
-        final String encodingName = EncodingsEnum.getEncodingNameByNumber(encodingNumber);
-        final byte compressionModelNumber = compressedData[1];
-        final byte[] rawCompressedData = new byte[compressedData.length - 2];
-        System.arraycopy(compressedData,2,rawCompressedData,0,rawCompressedData.length);
-        final Map<Byte,CompressionModel> numberToCompressionModel = dictionaries.get(encoding);
-        if(numberToCompressionModel != null)
-        {
-            final CompressionModel compressionModel = numberToCompressionModel.get(compressionModelNumber);
-            if(compressionModel != null)
-            {
-                final byte[] decompressedData = compressionModel.decompress(rawCompressedData);
-                String string = null;
-                try
-                {
-                    string = new String(decompressedData,encodingName);
-                }catch (UnsupportedEncodingException e)
-                {
-                     throw new FemtozipArchiverException("Can't decompress string,unsupported encoding",e);
+        byte archiveTypeAndEncodingNumber = compressedData[0];
+        int encodingNumber = archiveTypeAndEncodingNumber & 0x0f;
+        EncodingsEnum encoding = EncodingsEnum.getEncodingByNumber(encodingNumber);
+        String encodingName = EncodingsEnum.getEncodingNameByNumber(encodingNumber);
+        byte compressionModelNumber = compressedData[1];
+        byte[] rawCompressedData = new byte[compressedData.length - 2];
+        System.arraycopy(compressedData, 2, rawCompressedData, 0, rawCompressedData.length);
+        Map<Byte, CompressionModel> numberToCompressionModel = dictionaries.get(encoding);
+        if (numberToCompressionModel != null) {
+            CompressionModel compressionModel = numberToCompressionModel.get(compressionModelNumber);
+            if (compressionModel != null) {
+                byte[] decompressedData = compressionModel.decompress(rawCompressedData);
+                try {
+                    return new String(decompressedData, encodingName);
+                } catch (UnsupportedEncodingException e) {
+                    throw new ArchiverException("Can't decompress string, unsupported encoding: " + encoding, e);
                 }
-                return string;
+            } else {
+                throw new ArchiverException("No suitable compression module found for that model number:" + compressionModelNumber);
             }
-            else
-            {
-                throw new FemtozipArchiverException("No suitable compression module found for that model number:" + compressionModelNumber);
-            }
-        }
-        else
-        {
-            throw new FemtozipArchiverException("No dictionaries found for that encoding:" + encoding.getEncodingName());
+        } else {
+            throw new ArchiverException("No dictionaries found for that encoding:" + encoding.getEncodingName());
         }
     }
 
-    public int getArchiveType()
-    {
+    public int getArchiveType() {
         return archiveType;
     }
 

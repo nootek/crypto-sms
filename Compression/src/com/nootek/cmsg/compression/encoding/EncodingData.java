@@ -1,27 +1,21 @@
 package com.nootek.cmsg.compression.encoding;
 
-import com.nootek.cmsg.std.error.ReferenceChecker;
+import org.jetbrains.annotations.NotNull;
 
-public class EncodingData
-{
+public class EncodingData {
     private final String string;
     private final EncodingsEnum stringEncoding;
 
-    public EncodingData(final String string,final EncodingsEnum stringEncoding)
-    {
-        ReferenceChecker.checkReferenceNotNull(string, stringEncoding);
-
+    public EncodingData(@NotNull final String string, @NotNull final EncodingsEnum stringEncoding) {
         this.string = string;
         this.stringEncoding = stringEncoding;
     }
 
-    public String getString()
-    {
+    public String getString() {
         return this.string;
     }
 
-    public EncodingsEnum getStringEncoding()
-    {
+    public EncodingsEnum getStringEncoding() {
         return this.stringEncoding;
     }
 }
