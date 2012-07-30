@@ -62,7 +62,7 @@ public class CharsetConverter {
                     SUPPORTED_CHARS[c] |= (1 << oneByteEncoding.getEncodingNumber());
                 }
             } catch (UnsupportedEncodingException e) {
-                System.err.println("Unsupported encoding error:" + e.getMessage());
+                Log.e(TAG, "Unsupported encoding error", e);
             }
         }
 
