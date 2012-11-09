@@ -16,7 +16,7 @@ public class Test
     {
         try
         {
-            String password = "vasyabes";
+            String password = "weakpassword";
             String data = "This is secret!";
             AESVersionOneEncryptionAlgorithm aes = new AESVersionOneEncryptionAlgorithm();
             byte[] encryptedData = aes.encrypt(data.getBytes("UTF-8"),password);
