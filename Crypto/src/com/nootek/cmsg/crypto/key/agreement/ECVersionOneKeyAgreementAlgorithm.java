@@ -1,12 +1,11 @@
-package com.nootek.cmsg.crypto.agreement;
+package com.nootek.cmsg.crypto.key.agreement;
 
-import com.nootek.cmsg.crypto.key.PrivateKeySerializer;
-import com.nootek.cmsg.crypto.key.PublicKeySerializer;
-import com.nootek.cmsg.crypto.key.ec.ECPrivateKeySerializer;
-import com.nootek.cmsg.crypto.key.ec.ECPublicKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.PrivateKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.PublicKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.ec.ECPrivateKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.ec.ECPublicKeySerializer;
 import org.bouncycastle.jce.ECNamedCurveTable;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.jce.spec.ECNamedCurveParameterSpec;
 
 import javax.crypto.KeyAgreement;
 import java.security.*;

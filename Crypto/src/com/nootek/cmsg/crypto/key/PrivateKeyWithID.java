@@ -1,23 +1,23 @@
-package com.nootek.cmsg.crypto.agreement;
+package com.nootek.cmsg.crypto.key;
 
-import java.security.PublicKey;
+import java.security.PrivateKey;
 
-public final class PublicKeyWithID
+public final class PrivateKeyWithID
 {
-    private final PublicKey key;
+    private final PrivateKey key;
     private final byte keyGenerationAlgorithmID;
 
-    public PublicKeyWithID(PublicKey key,byte keyGenerationAlgorithmID)
+    public PrivateKeyWithID(PrivateKey key,byte keyGenerationAlgorithmID)
     {
         if(key == null)
         {
-            throw new IllegalArgumentException("Public key is null");
+            throw new IllegalArgumentException("Private key is null");
         }
         this.key = key;
         this.keyGenerationAlgorithmID = keyGenerationAlgorithmID;
     }
 
-    public PublicKey getPublicKey()
+    public PrivateKey getPrivateKey()
     {
         return key;
     }

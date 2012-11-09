@@ -1,9 +1,7 @@
 package com.nootek.cmsg.crypto.certs;
 
-import com.nootek.cmsg.crypto.agreement.PrivateKeyWithID;
+import com.nootek.cmsg.crypto.key.PrivateKeyWithID;
 import com.nootek.cmsg.crypto.cipher.EncryptionAlgorithmIDs;
-
-import java.security.PrivateKey;
 
 public final class PrivateCertificate
 {

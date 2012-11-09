@@ -1,8 +1,7 @@
 package com.nootek.cmsg.crypto.certs;
 
-import com.nootek.cmsg.crypto.agreement.PublicKeyWithID;
+import com.nootek.cmsg.crypto.key.PublicKeyWithID;
 
-import java.security.PublicKey;
 import java.util.Date;
 
 public final class PublicCertificate

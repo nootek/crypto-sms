@@ -1,7 +1,7 @@
-package com.nootek.cmsg.crypto.agreement;
+package com.nootek.cmsg.crypto.key.agreement;
 
-import com.nootek.cmsg.crypto.key.PrivateKeySerializer;
-import com.nootek.cmsg.crypto.key.PublicKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.PrivateKeySerializer;
+import com.nootek.cmsg.crypto.key.serializer.PublicKeySerializer;
 
 import javax.crypto.KeyAgreement;
 import java.security.KeyFactory;

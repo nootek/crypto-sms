@@ -1,4 +1,4 @@
-package com.nootek.cmsg.crypto.agreement;
+package com.nootek.cmsg.crypto.key.agreement;
 
 import java.security.NoSuchAlgorithmException;
 
